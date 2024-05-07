@@ -75,8 +75,7 @@ public class TapTargetView extends View {
   final int TEXT_PADDING;
   final int TEXT_SPACING;
   final int TEXT_MAX_WIDTH;
-  final int TEXT_POSITIONING_BIAS;
-  final int CIRCLE_PADDING;
+  final int OUTER_CIRCLE_PADDING;
   final int GUTTER_DIM;
   final int SHADOW_DIM;
   final int SHADOW_JITTER_DIM;
@@ -210,7 +209,7 @@ public class TapTargetView extends View {
       .duration(250)
       .delayBy(250)
       .interpolator(new AccelerateDecelerateInterpolator())
-      .onUpdate(lerpTime -> expandContractUpdateListener.onUpdate(lerpTime))
+      .onUpdate(expandContractUpdateListener)
       .onEnd(new FloatValueAnimatorBuilder.EndListener() {
         @Override
         public void onEnd() {
@@ -242,7 +241,7 @@ public class TapTargetView extends View {
   final ValueAnimator dismissAnimation = new FloatValueAnimatorBuilder(true)
       .duration(250)
       .interpolator(new AccelerateDecelerateInterpolator())
-      .onUpdate(lerpTime -> expandContractUpdateListener.onUpdate(lerpTime))
+      .onUpdate(expandContractUpdateListener)
       .onEnd(() -> finishDismiss(true))
       .build();
 
@@ -268,7 +267,7 @@ public class TapTargetView extends View {
       .onEnd(() -> finishDismiss(true))
       .build();
 
-  private ValueAnimator[] animators = new ValueAnimator[]
+  private final ValueAnimator[] animators = new ValueAnimator[]
       {expandAnimation, pulseAnimation, dismissConfirmAnimation, dismissAnimation};
 
   private final ViewTreeObserver.OnGlobalLayoutListener globalLayoutListener;
@@ -297,19 +296,17 @@ public class TapTargetView extends View {
     if (target == null) throw new IllegalArgumentException("Target cannot be null");
 
     this.target = target;
-    getTapType().initResource(context);
     this.parent = parent;
     this.boundingParent = boundingParent;
     this.listener = userListener != null ? userListener : new Listener();
     this.title = target.getTitle();
     this.description = target.getDescription();
 
-    TARGET_PADDING = getTapType().getTargetPadding();
-    CIRCLE_PADDING = getTapType().getCirclePadding();
+    TARGET_PADDING = target.getTargetPadding();
+    OUTER_CIRCLE_PADDING = getTapType().getOuterCirclePadding();
     TEXT_PADDING = getTapType().getTextPadding();
     TEXT_SPACING = getTapType().getTextSpacing();
     TEXT_MAX_WIDTH = getTapType().getTextMaxWidth();
-    TEXT_POSITIONING_BIAS = getTapType().getTextPositionBias();
     GUTTER_DIM = UiUtils.getDp( 88);
     SHADOW_DIM = UiUtils.getDp( 8);
     SHADOW_JITTER_DIM = UiUtils.getDp( 1);
@@ -743,7 +740,7 @@ public class TapTargetView extends View {
     c.drawRect(textBounds, debugPaint);
     c.drawRect(targetBounds, debugPaint);
     c.drawCircle(outerCircleCenter[0], outerCircleCenter[1], 10, debugPaint);
-    c.drawCircle(outerCircleCenter[0], outerCircleCenter[1], calculatedOuterCircleRadius - CIRCLE_PADDING, debugPaint);
+    c.drawCircle(outerCircleCenter[0], outerCircleCenter[1], calculatedOuterCircleRadius - OUTER_CIRCLE_PADDING, debugPaint);
     getTapType().drawInformation(c, targetBounds, targetCirclePaint);
 
     // Draw positions and dimensions
@@ -827,48 +824,46 @@ public class TapTargetView extends View {
     drawingBounds.left = (int) Math.max(0, outerCircleCenter[0] - outerCircleRadius);
     drawingBounds.top = (int) Math.min(0, outerCircleCenter[1] - outerCircleRadius);
     drawingBounds.right = (int) Math.min(getWidth(),
-        outerCircleCenter[0] + outerCircleRadius + CIRCLE_PADDING);
+        outerCircleCenter[0] + outerCircleRadius + OUTER_CIRCLE_PADDING);
     drawingBounds.bottom = (int) Math.min(getHeight(),
-        outerCircleCenter[1] + outerCircleRadius + CIRCLE_PADDING);
+        outerCircleCenter[1] + outerCircleRadius + OUTER_CIRCLE_PADDING);
   }
 
   int getOuterCircleRadius(int centerX, int centerY, Rect textBounds, Rect targetBounds) {
-    final int targetCenterX = targetBounds.centerX();
-    final int targetCenterY = targetBounds.centerY();
-    final int expandedRadius = (int) (1.1f * getTapType().getEdgeLength());
-    final Rect expandedBounds = new Rect(targetCenterX, targetCenterY, targetCenterX, targetCenterY);
-    expandedBounds.inset(-expandedRadius, -expandedRadius);
+    final Rect expandedBounds = new Rect(
+            targetBounds.left,
+            targetBounds.top,
+            targetBounds.right,
+            targetBounds.bottom);
+
+    expandedBounds.offset(target.getTargetPadding(), target.getTargetPadding());
 
     final int textRadius = maxDistanceToPoints(centerX, centerY, textBounds);
     final int targetRadius = maxDistanceToPoints(centerX, centerY, expandedBounds);
-    return Math.max(textRadius, targetRadius) + CIRCLE_PADDING;
+    return Math.max(textRadius, targetRadius) + OUTER_CIRCLE_PADDING;
   }
 
   Rect getTextBounds() {
     final int totalTextHeight = getTotalTextHeight();
     final int totalTextWidth = getTotalTextWidth();
-    return getTapType().getTextBounds(totalTextHeight, totalTextWidth, targetBounds, topBoundary, getWidth());
+    return getTapType().getTextBounds(
+            totalTextHeight, totalTextWidth, targetBounds, topBoundary, bottomBoundary, getWidth());
   }
 
   int[] getOuterCircleCenterPoint() {
     if (inGutter(targetBounds.centerY())) {
       return new int[]{targetBounds.centerX(), targetBounds.centerY()};
     }
-
-    int edgeLength = getTapType().getEdgeLength();
-
-    final int targetRadius = Math.max(targetBounds.width(), targetBounds.height()) / 2 + TARGET_PADDING;
     final int totalTextHeight = getTotalTextHeight();
 
-    final boolean onTop = targetBounds.centerY() - edgeLength - TARGET_PADDING - totalTextHeight > 0;
+    final boolean onTop = textBounds.centerY() < targetBounds.centerY();
 
-    final int left = Math.min(textBounds.left, targetBounds.left - targetRadius);
-    final int right = Math.max(textBounds.right, targetBounds.right + targetRadius);
+    final int left = Math.min(textBounds.left, targetBounds.left - target.getTargetPadding());
+    final int right = Math.max(textBounds.right, targetBounds.right + target.getTargetPadding());
     final int titleHeight = titleLayout == null ? 0 : titleLayout.getHeight();
     final int centerY = onTop ?
-        targetBounds.centerY() - edgeLength - TARGET_PADDING - totalTextHeight + titleHeight
-        :
-        targetBounds.centerY() + edgeLength + TARGET_PADDING + titleHeight;
+        targetBounds.centerY() - target.getTargetPadding() - totalTextHeight + titleHeight :
+        targetBounds.centerY() + target.getTargetPadding() + titleHeight;
 
     return new int[] { (left + right) / 2, centerY };
   }

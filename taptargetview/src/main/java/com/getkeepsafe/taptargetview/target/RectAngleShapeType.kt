@@ -11,61 +11,57 @@ import com.getkeepsafe.taptargetview.halfwayLerp
 
 class RectAngleShapeType : TapTargetShapeType() {
 
-    private var width = 0
+    private var initialWidth = 0
+    private var initialHeight = 0
 
-    private var height = 0
+    private var currentWidth = 0f
+    private var currentHeight = 0f
 
-    private var drawWidth = 0f
-
-    private var drawHeight = 0f
+    private var currentPulseWidth= 0f
+    private var currentPulseHeight = 0f
 
     private var pulseLength = 4.dp
-
-    private var drawPulseWidth= 0f
-
-    private var drawPulseHeight = 0f
-
     internal var roundRadius = 8.dp
 
-    override val edgeLength: Int
-        get() = 8.dp
+    override var targetPadding = 0
 
-    override fun onReadyTarget(bounds: Rect?) {
+    override fun onReadyTarget(bounds: Rect?, padding: Int) {
         checkNotNull(bounds)
-        this.width = bounds.width()
-        this.height = bounds.height()
+        this.targetPadding = padding
+        this.initialWidth = bounds.width() + padding
+        this.initialHeight = bounds.height() + padding
     }
 
     override fun expandContractChange(lerpTime: Float, isExpanding: Boolean) {
         if (isExpanding) {
-            drawHeight = height * 1.0f.coerceAtMost(lerpTime * 1.5f)
-            drawWidth = width * 1.0f.coerceAtMost(lerpTime * 1.5f)
+            currentHeight = initialHeight * 1.0f.coerceAtMost(lerpTime * 1.5f)
+            currentWidth = initialWidth * 1.0f.coerceAtMost(lerpTime * 1.5f)
         } else {
-            drawHeight = height * lerpTime
-            drawWidth = width * lerpTime
-            drawPulseWidth *= lerpTime
-            drawPulseHeight *= lerpTime
+            currentHeight = initialHeight * lerpTime
+            currentWidth = initialWidth * lerpTime
+            currentPulseWidth *= lerpTime
+            currentPulseHeight *= lerpTime
         }
     }
 
     override fun dismissConfirmAnimation(lerpTime: Float) {
-        drawHeight = height * (1.0f - lerpTime)
-        drawWidth = width * (1.0f - lerpTime)
-        drawPulseWidth = (1.0f + lerpTime) * width
-        drawPulseHeight = (1.0f + lerpTime) * height
+        currentHeight = initialHeight * (1.0f - lerpTime)
+        currentWidth = initialWidth * (1.0f - lerpTime)
+        currentPulseWidth = (1.0f + lerpTime) * initialWidth
+        currentPulseHeight = (1.0f + lerpTime) * initialHeight
     }
 
     override fun pulseAnimation(lerpTime: Float) {
-        drawWidth = width + lerpTime.halfwayLerp * pulseLength
-        drawHeight = height + lerpTime.halfwayLerp * pulseLength
-        drawPulseHeight = (1.0f + lerpTime.getDelayLerp(0.5f)) * height
-        drawPulseWidth = (1.0f + lerpTime.getDelayLerp(0.5f)) * width
+        currentWidth = initialWidth + lerpTime.halfwayLerp * pulseLength
+        currentHeight = initialHeight + lerpTime.halfwayLerp * pulseLength
+        currentPulseHeight = (1.0f + lerpTime.getDelayLerp(0.5f)) * initialHeight
+        currentPulseWidth = (1.0f + lerpTime.getDelayLerp(0.5f)) * initialWidth
     }
 
     override fun drawTarget(canvas: Canvas, targetBounds: Rect, paint: Paint) {
         canvas.drawRoundRect(
             targetBounds.toTargetRectF(
-                drawWidth, drawHeight
+                currentWidth, currentHeight
             ),
             roundRadius.toFloat(),
             roundRadius.toFloat(),
@@ -79,8 +75,8 @@ class RectAngleShapeType : TapTargetShapeType() {
     ): RectF {
         val centerX = centerX()
         val centerY = centerY()
-        val right = width * 0.5f + roundRadius / 2
-        val bottom = height * 0.5f + roundRadius / 2
+        val right = width * 0.5f
+        val bottom = height * 0.5f
         return RectF(
             centerX - right,
             centerY - bottom,
@@ -98,26 +94,12 @@ class RectAngleShapeType : TapTargetShapeType() {
         if (targetPulseAlpha < 0) return
         canvas.drawRoundRect(
             targetBounds.toTargetRectF(
-                drawPulseWidth, drawPulseHeight
+                currentPulseWidth, currentPulseHeight
             ),
             roundRadius.toFloat(),
             roundRadius.toFloat(),
             paint
         )
-    }
-
-    override fun getTextVertical(
-        targetBounds: Rect,
-        totalTextHeight: Int,
-        topBoundary: Int
-    ): Pair<Int, Int> {
-        val possibleTop = targetBounds.top - edgeLength - totalTextHeight - textPadding
-        val top = if (possibleTop > topBoundary) {
-            possibleTop
-        } else {
-            targetBounds.centerY() + edgeLength + targetPadding
-        }
-        return top to top + totalTextHeight
     }
 
     override fun clickInTarget(targetBounds: Rect, lastTouchX: Int, lastTouchY: Int): Boolean {

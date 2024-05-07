@@ -1,6 +1,5 @@
 package com.getkeepsafe.taptargetview.target
 
-import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
@@ -12,50 +11,37 @@ import kotlin.math.roundToInt
 
 class CircleShapeTapTarget: TapTargetShapeType() {
 
-    private var targetRadius = 44
+    private var initialRadius = 0
+    private var initialPulseRadius = 0
+    private var currentRadius = 0f
+    private var currentPulseRadius = 0f
 
-    private var targetCircleRadius = 0f
+    override var targetPadding = 0
 
-    private var targetCirclePulseRadius = 0f
-
-    private var TARGET_RADIUS = 0
-
-    private var TARGET_PULSE_RADIUS = 0
-
-
-    /**
-     * 用于测量文本，圆心等位置的
-     */
-    override val edgeLength: Int get() = TARGET_RADIUS
-
-    /** Specify the target radius in dp.  */
-    fun setTargetRadius(targetRadius: Int): CircleShapeTapTarget {
-        this.targetRadius = targetRadius
-        return this
-    }
-
-    override fun initResource(context: Context) {
-        TARGET_RADIUS = targetRadius.dp
-        TARGET_PULSE_RADIUS = (TARGET_RADIUS * 0.1f).roundToInt()
+    override fun onReadyTarget(bounds: Rect?, padding: Int) {
+        checkNotNull(bounds)
+        targetPadding = padding
+        initialRadius = (bounds.width().coerceAtLeast(bounds.height()) / 2) + padding
+        initialPulseRadius = (initialRadius * 0.1f).roundToInt()
     }
 
     override fun expandContractChange(lerpTime: Float, isExpanding: Boolean) {
         if (isExpanding) {
-            targetCircleRadius = TARGET_RADIUS * 1.0f.coerceAtMost(lerpTime * 1.5f)
+            currentRadius = initialRadius * 1.0f.coerceAtMost(lerpTime * 1.5f)
         } else {
-            targetCircleRadius = TARGET_RADIUS * lerpTime
-            targetCirclePulseRadius *= lerpTime
+            currentRadius = initialRadius * lerpTime
+            currentPulseRadius *= lerpTime
         }
     }
 
     override fun pulseAnimation(lerpTime: Float) {
-        targetCirclePulseRadius = (1.0f + lerpTime.getDelayLerp(0.5f)) * TARGET_RADIUS
-        targetCircleRadius = TARGET_RADIUS + lerpTime.halfwayLerp * TARGET_PULSE_RADIUS
+        currentPulseRadius = (1.0f + lerpTime.getDelayLerp(0.5f)) * initialRadius
+        currentRadius = initialRadius + lerpTime.halfwayLerp * initialPulseRadius
     }
 
     override fun dismissConfirmAnimation(lerpTime: Float) {
-        targetCircleRadius = (1.0f - lerpTime) * TARGET_RADIUS
-        targetCirclePulseRadius = (1.0f + lerpTime) * TARGET_RADIUS
+        currentRadius = (1.0f - lerpTime) * initialRadius
+        currentPulseRadius = (1.0f + lerpTime) * initialRadius
     }
 
     override fun drawTarget(
@@ -64,8 +50,10 @@ class CircleShapeTapTarget: TapTargetShapeType() {
         paint: Paint
     ) {
         canvas.drawCircle(
-            targetBounds.centerX().toFloat(), targetBounds.centerY().toFloat(),
-            targetCircleRadius, paint
+            targetBounds.centerX().toFloat(),
+            targetBounds.centerY().toFloat(),
+            currentRadius,
+            paint
         )
     }
 
@@ -77,8 +65,10 @@ class CircleShapeTapTarget: TapTargetShapeType() {
     ) {
         if (targetPulseAlpha < 0) return
         canvas.drawCircle(
-            targetBounds.centerX().toFloat(), targetBounds.centerY().toFloat(),
-            targetCirclePulseRadius, paint
+            targetBounds.centerX().toFloat(),
+            targetBounds.centerY().toFloat(),
+            currentPulseRadius,
+            paint
         )
     }
 
@@ -86,7 +76,7 @@ class CircleShapeTapTarget: TapTargetShapeType() {
         canvas.drawCircle(
             targetBounds.centerX().toFloat(),
             targetBounds.centerY().toFloat(),
-            TARGET_RADIUS + 20.dp.toFloat(),
+            initialRadius + 20.dp.toFloat(),
             paint
         )
     }
@@ -95,6 +85,6 @@ class CircleShapeTapTarget: TapTargetShapeType() {
         val xPow = (lastTouchX - targetBounds.centerX()).toDouble().pow(2.0)
         val yPow = (lastTouchY - targetBounds.centerY()).toDouble().pow(2.0)
         val sqrt = (xPow + yPow).pow(0.5)
-        return sqrt <= targetCircleRadius
+        return sqrt <= currentRadius
     }
 }

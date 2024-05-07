@@ -14,6 +14,7 @@ import androidx.annotation.DimenRes
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.drawToBitmap
+import com.getkeepsafe.taptargetview.dp
 import com.getkeepsafe.taptargetview.sp
 
 open class TapTarget {
@@ -98,6 +99,8 @@ open class TapTarget {
     var tintTarget = true
     var transparentTarget = false
     var descriptionTextAlpha = 0.54f
+
+    var targetPadding = 20.dp
 
     /** Specify whether the target should be transparent  */
     fun transparentTarget(transparent: Boolean): TapTarget {
@@ -279,6 +282,12 @@ open class TapTarget {
         return this
     }
 
+    /** Specify the padding to apply around the target view **/
+    fun targetPaddingDp(dp: Int): TapTarget {
+        targetPadding = dp
+        return this
+    }
+
     /** Specify a unique identifier for this target.  */
     fun id(id: Int): TapTarget {
         this.id = id
@@ -297,7 +306,7 @@ open class TapTarget {
     open fun onReady(runnable: Runnable?) {
         val view = this.view ?: kotlin.run {
             runnable?.run()
-            tapTargetType.onReadyTarget(bounds)
+            tapTargetType.onReadyTarget(bounds, targetPadding)
             return
         }
         view.doOnLayout {
@@ -317,7 +326,7 @@ open class TapTarget {
                 icon.setBounds(0, 0, view.width, view.height)
                 this.icon = icon
             }
-            tapTargetType.onReadyTarget(bounds)
+            tapTargetType.onReadyTarget(bounds, targetPadding)
             runnable?.run()
         }
     }

@@ -1,7 +1,6 @@
 @file:Suppress("unused")
 package com.getkeepsafe.taptargetview.target
 
-import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
@@ -11,15 +10,13 @@ abstract class TapTargetShapeType {
 
     var textPadding = 40.dp
 
-    var circlePadding = 40.dp
-
     var textSpacing = 8.dp
 
     var textMaxWidth = 360.dp
 
-    var targetPadding = 20.dp
+    var outerCirclePadding = 40.dp
 
-    var textPositionBias = 20.dp
+    abstract var targetPadding: Int
 
 
     companion object {
@@ -35,11 +32,6 @@ abstract class TapTargetShapeType {
         }
 
     }
-
-
-    abstract val edgeLength: Int
-
-    open fun initResource(context: Context) {}
 
     abstract fun expandContractChange(lerpTime: Float, isExpanding: Boolean)
 
@@ -64,17 +56,18 @@ abstract class TapTargetShapeType {
 
     abstract fun clickInTarget(targetBounds: Rect, lastTouchX: Int, lastTouchY: Int): Boolean
 
-    open fun onReadyTarget(bounds: Rect?) {}
+    open fun onReadyTarget(bounds: Rect?, padding: Int) {}
 
     open fun getTextBounds(
         totalTextHeight: Int,
         totalTextWidth: Int,
         targetBounds: Rect,
         topBoundary: Int,
+        bottomBoundary: Int,
         viewWidth: Int
     ): Rect {
-        val verticalLocation = getTextVertical(targetBounds, totalTextHeight, topBoundary)
-        val horizontalLocation = getTextHorizontal(targetBounds, totalTextWidth, viewWidth, viewWidth)
+        val verticalLocation = getTextVertical(targetBounds, totalTextHeight, topBoundary, bottomBoundary)
+        val horizontalLocation = getTextHorizontal(targetBounds, totalTextWidth, viewWidth)
         return Rect(
             horizontalLocation.first,
             verticalLocation.first,
@@ -86,13 +79,14 @@ abstract class TapTargetShapeType {
     open fun getTextVertical(
         targetBounds: Rect,
         totalTextHeight: Int,
-        topBoundary: Int
+        topBoundary: Int,
+        bottomBoundary: Int
     ): Pair<Int, Int> {
-        val possibleTop = targetBounds.centerY() - edgeLength - targetPadding - totalTextHeight
-        val top =  if (possibleTop > topBoundary) {
-            possibleTop
+        val top =  if (targetBounds.centerY() - topBoundary > bottomBoundary - targetBounds.centerY()) {
+            // There is more space above the target than below so place the text there
+            targetBounds.top - targetPadding - textPadding - totalTextHeight
         } else {
-            targetBounds.centerY() + edgeLength + targetPadding
+            targetBounds.bottom + targetPadding + textPadding
         }
         return top to top + totalTextHeight
     }
@@ -100,16 +94,44 @@ abstract class TapTargetShapeType {
     open fun getTextHorizontal(
         targetBounds: Rect,
         totalTextWidth: Int,
-        leftBoundary: Int,
         viewWidth: Int
     ): Pair<Int, Int> {
-        val relativeCenterDistance: Int = viewWidth / 2 - targetBounds.centerX()
-        val bias: Int =
-            if (relativeCenterDistance < 0) -textPositionBias else textPositionBias
-        val left: Int = textPadding.coerceAtLeast(targetBounds.centerX() - bias - totalTextWidth)
-        val right = (viewWidth - textPadding).coerceAtMost(left + totalTextWidth)
-        return left to right
-    }
+        val left: Int
+        val right: Int
 
+        val maxWidth = totalTextWidth.coerceAtMost(textMaxWidth)
+
+        if (viewWidth / 2 < targetBounds.centerX()) {
+            left = targetBounds.right - maxWidth
+            right = targetBounds.right
+        } else {
+            left = targetBounds.left
+            right = targetBounds.left + maxWidth
+        }
+
+        return (left to right)
+            .coerceAtLeast(textPadding)
+            .coerceAtMost(viewWidth - textPadding)
+    }
+}
+
+fun Pair<Int, Int>.coerceAtLeast(value: Int): Pair<Int, Int> {
+    val (first, second) = this
+    val maxDelta = maxOf(value - first, value - second, 0)
+
+    val newFirst = first + maxDelta
+    val newSecond = second + maxDelta
+
+    return Pair(newFirst, newSecond)
+}
+
+fun Pair<Int, Int>.coerceAtMost(value: Int): Pair<Int, Int> {
+    val maxPairValue = maxOf(first, second)
+    return if (maxPairValue > value) {
+        val delta = maxPairValue - value
+        Pair(first - delta, second - delta)
+    } else {
+        this
+    }
 }
 

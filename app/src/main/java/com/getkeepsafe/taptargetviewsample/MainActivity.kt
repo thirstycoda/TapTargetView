@@ -1,6 +1,7 @@
 package com.getkeepsafe.taptargetviewsample
 
 import android.content.DialogInterface
+import android.content.res.Resources
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
@@ -9,14 +10,12 @@ import android.text.style.StyleSpan
 import android.text.style.UnderlineSpan
 import android.util.Log
 import android.view.View
-import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
-import com.getkeepsafe.taptargetview.target.TapTarget
 import com.getkeepsafe.taptargetview.TapTargetSequence
 import com.getkeepsafe.taptargetview.TapTargetView
 import com.getkeepsafe.taptargetview.createNavigationIcon
@@ -24,6 +23,7 @@ import com.getkeepsafe.taptargetview.createOverflow
 import com.getkeepsafe.taptargetview.createTarget
 import com.getkeepsafe.taptargetview.forToolbarMenuItem
 import com.getkeepsafe.taptargetview.showGuideView
+import com.getkeepsafe.taptargetview.target.TapTarget
 import com.getkeepsafe.taptargetview.target.TapTargetShapeType
 
 class MainActivity : AppCompatActivity() {
@@ -43,7 +43,9 @@ class MainActivity : AppCompatActivity() {
         // Tell our droid buddy where we want him to appear
         val droidTarget = Rect(0, 0, droid!!.intrinsicWidth * 2, droid.intrinsicHeight * 2)
         // Using deprecated methods makes you look way cool
-        droidTarget.offset(display.width / 2, display.height / 2)
+        droidTarget.offset(
+            (display.width / 2) - (droidTarget.width() / 2),
+            (display.height / 2) - (droidTarget.height() / 2))
         val sassyDesc = SpannableString("It allows you to go back, sometimes")
         sassyDesc.setSpan(
             StyleSpan(Typeface.ITALIC),
@@ -154,7 +156,8 @@ class MainActivity : AppCompatActivity() {
                     .targetIconColor(android.R.color.holo_blue_dark)
                     .transparentTarget(true)
                     .textColor(android.R.color.black)
-                    .setTargetShapeType(TapTargetShapeType.RectAngle(16)),
+                    .setTargetShapeType(TapTargetShapeType.RectAngle(16))
+                    .targetPaddingDp((16 * Resources.getSystem().displayMetrics.density).toInt()),
                 object : TapTargetView.Listener() {
                     override fun onTargetClick(view: TapTargetView) {
                         Toast.makeText(

@@ -925,6 +925,6 @@ public class TapTargetView extends View {
   }
 
   TapTargetShapeType getTapType() {
-    return target.getTapTargetType$taptargetview_debug();
+    return target.getTapTargetType();
   }
 }

@@ -13,9 +13,15 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+
+    namespace 'com.getkeepsafe.taptargetview'
 }
 
 dependencies {
@@ -33,7 +39,7 @@ dependencies {
 // build a jar with source files
 tasks.register('sourcesJar', Jar) {
     from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
+    archiveClassifier = 'sources'
 }
 
 tasks.register('javadoc', Javadoc) {
@@ -45,7 +51,7 @@ tasks.register('javadoc', Javadoc) {
 // build a jar with javadoc
 tasks.register('javadocJar', Jar) {
     dependsOn javadoc
-    classifier = 'javadoc'
+    archiveClassifier = 'javadoc'
     from javadoc.destinationDir
 }
 
